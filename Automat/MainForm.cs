@@ -12,11 +12,11 @@ namespace Automat
 {
     public partial class MainForm : Form
     {
+        private const int ServerCount = 3;
+
         public MainForm()
         {
             InitializeComponent();
-
-            MatrixToDgv(Calculator.GetMatrix(0.01, 0.1, 3));
         }
 
         public void MatrixToDgv(IEnumerable<IEnumerable<double>> data)
@@ -28,11 +28,35 @@ namespace Automat
 
             Enumerable.Range(0, matrix.Count > 0 ? matrix[0].Count : 0).ToList().ForEach(i => dgvTable.Columns.Add("", ""));
 
+            dgvTable.Columns.Add("sum", "sum");
+
             matrix.ForEach(row =>
             {
                 var dgvRow = dgvTable.Rows.Add();
                 Enumerable.Range(0, row.Count).ToList().ForEach(cell => dgvTable[cell, dgvRow].Value = $"{row[cell]:0.####}");
+                dgvTable[dgvTable.ColumnCount - 1, dgvRow].Value = $"{row.Sum():0.####}";
             });
+        }
+
+        public void UptimesToDgv(IEnumerable<Tuple<int, double>> uptimes)
+        {
+            dgvTable.Rows.Clear();
+            dgvTable.Columns.Clear();
+
+            dgvTable.Columns.Add("count", "count");
+            dgvTable.Columns.Add("uptime", "uptime");
+
+            uptimes.ToList().ForEach(x =>
+            {
+                var row = dgvTable.Rows.Add();
+                dgvTable[0, row].Value = x.Item1;
+                dgvTable[1, row].Value = $"{x.Item2}";
+            });
+        }
+
+        private void bCalc_Click(object sender, EventArgs e)
+        {
+            UptimesToDgv(Calculator.GetUptimes((double) nudMaxUptime.Value, (double) nudLambda.Value, (double) nudMu.Value));
         }
     }
 }
