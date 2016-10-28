@@ -50,7 +50,7 @@ namespace Automat
             {
                 var row = dgvTable.Rows.Add();
                 dgvTable[0, row].Value = x.Item1;
-                dgvTable[1, row].Value = $"{x.Item2}";
+                dgvTable[1, row].Value = $"{x.Item2:0.######}";
             });
         }
 

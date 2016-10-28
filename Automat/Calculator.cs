@@ -15,22 +15,21 @@ namespace Automat
                                 .Range(0, count)
                                 .Select(bit => new Tuple<int, int>((row >> bit) & 1, (cell >> bit) & 1))
                                 .Select(tuple => tuple.Item1 == tuple.Item2
-                                        ? tuple.Item1 == 1
+                                        ? tuple.Item1 == 0
                                             ? Math.Exp(-lambda)
                                             : Math.Exp(-mu)
-                                        : tuple.Item1 == 0
+                                        : tuple.Item1 == 1
                                             ? 1 - Math.Exp(-mu)
                                             : 1 - Math.Exp(-lambda)
                                 )
                                 .Aggregate((acc, x) => acc*x)
                         )
-                        .Reverse()
-                )
-                .Reverse();
+                );
 
         public static double GetUptime(IEnumerable<IEnumerable<double>> data)
         {
             var matrix = data.Select(x => x.ToList()).ToList();
+            var count = matrix.Count - 1;
             var prevUptime = new List<double> {1};
             prevUptime.AddRange(Enumerable.Range(0, matrix.Count - 1).Select(x => 0.0));
             while (true)
@@ -40,14 +39,12 @@ namespace Automat
                     .Select(i => prevUptime.Select((cell, j) => cell*matrix[j][i]).Sum())
                     .ToList();
 
-                var count = uptime.Count - 1;
-
-                if (Math.Abs(prevUptime.Take(count).Sum() - uptime.Take(count).Sum()) < 0.000001) break;
+                if (uptime.Select((x, i) => Math.Abs(prevUptime[i] - x) < Math.Pow(10, -6)).All(x => x)) break;
 
                 prevUptime = uptime;
             }
 
-            return prevUptime.Take(prevUptime.Count - 1).Sum();
+            return prevUptime.Take(count).Sum();
         }
 
         public static IEnumerable<Tuple<int, double>> GetUptimes(double maxUptime, double lambda, double mu)

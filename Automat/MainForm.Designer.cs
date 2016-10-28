@@ -134,15 +134,17 @@
             // 
             // nudMaxUptime
             // 
+            this.nudMaxUptime.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.nudMaxUptime.DecimalPlaces = 5;
             this.nudMaxUptime.Increment = new decimal(new int[] {
             1,
             0,
             0,
-            196608});
+            262144});
             this.nudMaxUptime.Location = new System.Drawing.Point(299, 12);
             this.nudMaxUptime.Name = "nudMaxUptime";
-            this.nudMaxUptime.Size = new System.Drawing.Size(82, 20);
+            this.nudMaxUptime.Size = new System.Drawing.Size(271, 20);
             this.nudMaxUptime.TabIndex = 6;
             this.nudMaxUptime.Value = new decimal(new int[] {
             9999,
