@@ -54,9 +54,34 @@ namespace Automat
             });
         }
 
+        public void UptimesToDgv(IEnumerable<dynamic> results)
+        {
+            dgvTable.Rows.Clear();
+            dgvTable.Columns.Clear();
+
+            dgvTable.Columns.Add("lambdas", "lambdas");
+            dgvTable.Columns.Add("mus", "mus");
+            dgvTable.Columns.Add("price", "price");
+            
+            results.ToList().ForEach(x =>
+            {
+                var row = dgvTable.Rows.Add();
+                dgvTable[0, row].Value = string.Join(", ", ((IEnumerable<double>)x.Lambdas).Select(y => $"{y:0.###}"));
+                dgvTable[1, row].Value = string.Join(", ", ((IEnumerable<double>)x.Mus    ).Select(y => $"{y:0.###}"));
+                dgvTable[2, row].Value = $"{x.Price:C}";
+            });
+        }
+
         private void bCalc_Click(object sender, EventArgs e)
         {
-            UptimesToDgv(Calculator.GetUptimes((double) nudMaxUptime.Value, (double) nudLambda.Value, (double) nudMu.Value));
+            var lambdas = tbLambda.Text.Split().Select(double.Parse).ToList();
+            var mus = tbMu.Text.Split().Select(double.Parse).ToList();
+            var prices = tbPrices.Text.Split().Select(double.Parse).ToList();
+            var uptime = (double) nudMaxUptime.Value;
+
+            if (lambdas.Count != mus.Count) throw new ArgumentException("не равное кол-во лямбд и мю");
+
+            UptimesToDgv(Calculator.GetUptimes(uptime, lambdas, mus, prices));
         }
     }
 }
