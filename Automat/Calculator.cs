@@ -29,7 +29,6 @@ namespace Automat
         public static double GetUptime(IEnumerable<IEnumerable<double>> data)
         {
             var matrix = data.Select(x => x.ToList()).ToList();
-            var count = matrix.Count - 1;
             var prevUptime = new List<double> {1};
             prevUptime.AddRange(Enumerable.Range(0, matrix.Count - 1).Select(x => 0.0));
             while (true)
@@ -44,7 +43,7 @@ namespace Automat
                 prevUptime = uptime;
             }
 
-            return prevUptime.Take(count).Sum();
+            return prevUptime.Take(matrix.Count - 1).Sum();
         }
 
         public static IEnumerable<Tuple<int, double>> GetUptimes(double maxUptime, double lambda, double mu)
