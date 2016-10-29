@@ -79,9 +79,10 @@ namespace Automat
             var prices = tbPrices.Text.Split().Select(double.Parse).ToList();
             var uptime = (double) nudMaxUptime.Value;
 
-            if (lambdas.Count != mus.Count) throw new ArgumentException("не равное кол-во лямбд и мю");
+            if (lambdas.Count != mus.Count && mus.Count != prices.Count)
+                throw new ArgumentException("lists must be equals by count");
 
-            UptimesToDgv(Calculator.GetUptimes(uptime, lambdas, mus, prices));
+            UptimesToDgv(Calculator.GetServerCombinationsWithPriceForUptime(uptime, lambdas, mus, prices));
         }
     }
 }

@@ -4,59 +4,51 @@ using System.Linq;
 
 namespace Automat
 {
-    class Calculator
+    static class Calculator
     {
-        public static IEnumerable<IEnumerable<double>> GetMatrix(double lambda, double mu, int count) =>
-            Enumerable
-                .Range(0, (int)Math.Pow(2, count))
-                .Select(row => Enumerable
-                        .Range(0, (int)Math.Pow(2, count))
-                        .Select(cell => Enumerable
-                                .Range(0, count)
-                                .Select(bit => new Tuple<int, int>((row >> bit) & 1, (cell >> bit) & 1))
-                                .Select(tuple => tuple.Item1 == tuple.Item2
-                                        ? tuple.Item1 == 0
-                                            ? Math.Exp(-lambda)
-                                            : Math.Exp(-mu)
-                                        : tuple.Item1 == 1
-                                            ? 1 - Math.Exp(-mu)
-                                            : 1 - Math.Exp(-lambda)
-                                )
-                                .Aggregate((acc, x) => acc * x)
-                        )
-                );
+        public static List<List<double>> GetMatrix(double lambda, double mu, int count) =>
+            GetMatrix(Enumerable.Repeat(lambda, count).ToList(), Enumerable.Repeat(mu, count).ToList());
 
-        public static IEnumerable<IEnumerable<double>> GetMatrix(IList<double> lambdas, IList<double> mus)
+        public static List<List<double>> GetMatrix(List<Server> servers) =>
+            GetMatrix(servers.Select(x => x.Lambda).ToList(), servers.Select(x => x.Mu).ToList());
+
+        public static List<List<double>> GetMatrix(List<double> lambdas, List<double> mus)
         {
             if (lambdas.Count != mus.Count) throw new ArgumentException("count of lists must be equal");
 
             var count = mus.Count;
 
-            return Enumerable
-                .Range(0, (int) Math.Pow(2, count))
-                .Select(row => Enumerable
+            return count == 0
+                ? Enumerable.Empty<List<double>>().ToList()
+                : Enumerable
+                    .Range(0, (int) Math.Pow(2, count))
+                    .Select(row => Enumerable
                         .Range(0, (int) Math.Pow(2, count))
                         .Select(cell => Enumerable
-                                .Range(0, count)
-                                .Select(bit => new Tuple<int, int>((row >> bit) & 1, (cell >> bit) & 1))
-                                .Select((tuple, i) => tuple.Item1 == tuple.Item2
-                                        ? tuple.Item1 == 0
-                                            ? Math.Exp(-lambdas[i])
-                                            : Math.Exp(-mus[i])
-                                        : tuple.Item1 == 1
-                                            ? 1 - Math.Exp(-mus[i])
-                                            : 1 - Math.Exp(-lambdas[i])
-                                )
-                                .Aggregate((acc, x) => acc*x)
+                            .Range(0, count)
+                            .Select(bit => new Tuple<int, int>((row >> bit) & 1, (cell >> bit) & 1))
+                            .Select((tuple, i) => tuple.Item1 == tuple.Item2
+                                ? tuple.Item1 == 0
+                                    ? Math.Exp(-lambdas[i])
+                                    : Math.Exp(-mus[i])
+                                : tuple.Item1 == 1
+                                    ? 1 - Math.Exp(-mus[i])
+                                    : 1 - Math.Exp(-lambdas[i])
+                            )
+                            .Aggregate((acc, x) => acc*x)
                         )
-                );
+                        .ToList()
+                    )
+                    .ToList();
         }
 
-        public static double GetUptime(IEnumerable<IEnumerable<double>> data)
+        public static double GetUptime(List<List<double>> matrix)
         {
-            var matrix = data.Select(x => x.ToList()).ToList();
+            if (matrix.Count == 0) return 0;
+
             var prevUptime = new List<double> { 1 };
             prevUptime.AddRange(Enumerable.Repeat(0.0, matrix.Count - 1));
+
             while (true)
             {
                 var uptime = Enumerable
@@ -72,20 +64,18 @@ namespace Automat
             return prevUptime.Take(matrix.Count - 1).Sum();
         }
 
-        public static IEnumerable<Tuple<int, double>> GetUptimes(double maxUptime, double lambda, double mu)
+        public static Tuple<int, double> GetServerCountForUptime(double maxUptime, double lambda, double mu)
         {
             var count = 0;
             while (true)
             {
                 var uptime = GetUptime(GetMatrix(lambda, mu, ++count));
-                yield return new Tuple<int, double>(count, uptime);
-
-                if (uptime >= maxUptime) break;
+                if (uptime >= maxUptime) return new Tuple<int, double>(count, uptime);
             }
         }
 
-        public static IEnumerable<dynamic> GetUptimes(double maxUptime, IList<double> lambdas, IList<double> mus,
-            IList<double> prices)
+        public static IEnumerable<dynamic> GetServerCombinationsWithPriceForUptime(double maxUptime, List<double> lambdas, List<double> mus,
+            List<double> prices)
         {
             if (lambdas.Count != mus.Count && mus.Count != prices.Count)
                 throw new ArgumentException("count of lists must be equal");
@@ -93,28 +83,20 @@ namespace Automat
             var count = mus.Count;
             var maxCount = Enumerable
                 .Range(0, count)
-                .Select(i => GetUptimes(maxUptime, lambdas[i], mus[i]).Last().Item1)
+                .Select(i => GetServerCountForUptime(maxUptime, lambdas[i], mus[i]).Item1)
                 .Max();
 
-            var servers = lambdas.Select((x, i) => new Server {Lambda = x, Mu = mus[i], Price = prices[i]});
+            var servers = lambdas
+                .Select((x, i) => new Server {Lambda = x, Mu = mus[i], Price = prices[i]})
+                .ToList();
 
-            return Enumerable
-                .Range(1, maxCount - 1)
-                .SelectMany(i => GetCombinations(servers.ToList(), i).Select(x =>
-                {
-                    var list = x.ToList();
-                    return new
-                    {
-                        Servers = list,
-                        Uptime = GetUptime(GetMatrix(list.Select(y => y.Lambda).ToList(), list.Select(y => y.Mu).ToList()))
-                    };
-                }))
-                .Where(x => x.Uptime > maxUptime)
+            return GetCombinations(servers, 1, maxCount)
+                .Where(x => GetUptime(GetMatrix(x)) >= maxUptime)
                 .Select(x => new
                 {
-                    Lambdas = x.Servers.Select(y => y.Lambda),
-                    Mus = x.Servers.Select(y => y.Mu),
-                    Price = x.Servers.Sum(y => y.Price)
+                    Lambdas = x.Select(y => y.Lambda).ToList(),
+                    Mus = x.Select(y => y.Mu).ToList(),
+                    Price = x.Sum(y => y.Price)
                 })
                 .OrderBy(x => x.Price);
         }
@@ -142,29 +124,29 @@ namespace Automat
             public int CompareTo(object obj) => GetHashCode().CompareTo(obj.GetHashCode());
         }
 
-        public static IEnumerable<IEnumerable<Server>> GetCombinations(IList<Server> servers, int count)
+        public static IEnumerable<T> Distinct<T>(this IEnumerable<T> source, Func<T, T, bool> comparator)
         {
-            var combinations = new List<IEnumerable<Server>>();
+            var list = new List<T>();
 
-            Enumerable
-                .Range(0, (int) Math.Pow(servers.Count, count))
-                .ToList()
-                .ForEach(i =>
-                {
-                    var list = new List<Server>();
-                    var num = i;
-                    var del = (int)Math.Pow(servers.Count, count - 1);
-                    while (del >= 1)
-                    {
-                        list.Add(servers[num/del]);
-                        num %= del;
-                        del /= servers.Count;
-                    }
-                    if (!combinations.Any(x => x.SequenceEqual(list.OrderBy(y => y))))
-                        combinations.Add(list);
-                });
+            source.ToList().ForEach(x => {if (!list.Any(y => comparator(x, y))) list.Add(x);});
 
-            return combinations;
+            return list;
         }
+
+        public static IEnumerable<int> ToBase(this int value, int scaleBase, int count) => Enumerable
+            .Range(0, count)
+            .Select(i => value/(int) Math.Pow(scaleBase, i)%scaleBase);
+
+        public static List<List<Server>> GetCombinations(List<Server> servers, int count) => Enumerable
+            .Range(0, (int) Math.Pow(servers.Count, count))
+            .Select(i => i.ToBase(servers.Count, count).Select(j => servers[j]).OrderBy(x => x).ToList())
+            .Distinct((x, y) => x.SequenceEqual(y))
+            .ToList();
+
+        public static List<List<Server>> GetCombinations(List<Server> servers, int min, int max) => Enumerable
+            .Range(0, max + 1)
+            .Skip(min)
+            .SelectMany(i => GetCombinations(servers, i))
+            .ToList();
     }
 }
