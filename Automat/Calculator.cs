@@ -133,20 +133,19 @@ namespace Automat
             return list;
         }
 
-        public static IEnumerable<int> ToBase(this int value, int scaleBase, int count) => Enumerable
-            .Range(0, count)
-            .Select(i => value/(int) Math.Pow(scaleBase, i)%scaleBase);
-
-        public static List<List<Server>> GetCombinations(List<Server> servers, int count) => Enumerable
-            .Range(0, (int) Math.Pow(servers.Count, count))
-            .Select(i => i.ToBase(servers.Count, count).Select(j => servers[j]).OrderBy(x => x).ToList())
-            .Distinct((x, y) => x.SequenceEqual(y))
-            .ToList();
-
         public static List<List<Server>> GetCombinations(List<Server> servers, int min, int max) => Enumerable
             .Range(0, max + 1)
             .Skip(min)
             .SelectMany(i => GetCombinations(servers, i))
             .ToList();
+
+        public static List<List<Server>> GetCombinations(List<Server> servers, int count) => count == 1
+            ? servers.Select(server => new List<Server> {server}).ToList()
+            : GetCombinations(servers, count - 1)
+                .SelectMany(combination => servers
+                        .Select(server => combination.Concat(new List<Server> {server}).ToList())
+                )
+                .Distinct((x, y) => x.OrderBy(el => el).SequenceEqual(y.OrderBy(el => el)))
+                .ToList();
     }
 }
